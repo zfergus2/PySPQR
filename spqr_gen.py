@@ -1,21 +1,26 @@
 '''
 Author: Yotam Gingold <yotam (strudel) yotamgingold.com>
 License: Public Domain [CC0](http://creativecommons.org/publicdomain/zero/1.0/)
-Description: Wrapper for SuiteSparse qr() function. Matlab has it, Python should have it, too.
+Description: Wrapper for SuiteSparse qr() function. Matlab has it, Python
+should have it, too.
 '''
+
+import os
 
 from cffi import FFI
 
 ffibuilder = FFI()
 
-ffibuilder.set_source( "_spqr",
+ffibuilder.set_source("_spqr",
     """#include <SuiteSparseQR_C.h>""",
-    include_dirs = ['/usr/include/suitesparse'],
-    libraries=['spqr'])
+    library_dirs=["%s/SuiteSparse/lib/" % os.environ["HOME"]],
+    include_dirs=["%s/SuiteSparse/include/" % os.environ["HOME"]],
+    runtime_library_dirs=["%s/SuiteSparse/lib/" % os.environ["HOME"]],
+    libraries=["spqr"])
 
 ffibuilder.cdef("""
-// The int... is a magic thing which tells the compiler to figure out what the right
-// integer type is.
+// The int... is a magic thing which tells the compiler to figure out what the
+// right integer type is.
 typedef int... SuiteSparse_long;
 
 /// Many of these are copied from "cholmod_core.h"
@@ -40,69 +45,69 @@ typedef struct cholmod_triplet_struct
     void *z ;		/* size nzmax, if present */
 
     int stype ;		/* Describes what parts of the matrix are considered:
-			 *
-	* 0:  matrix is "unsymmetric": use both upper and lower triangular parts
-	*     (the matrix may actually be symmetric in pattern and value, but
-	*     both parts are explicitly stored and used).  May be square or
-	*     rectangular.
-	* >0: matrix is square and symmetric.  Entries in the lower triangular
-	*     part are transposed and added to the upper triangular part when
-	*     the matrix is converted to cholmod_sparse form.
-	* <0: matrix is square and symmetric.  Entries in the upper triangular
-	*     part are transposed and added to the lower triangular part when
-	*     the matrix is converted to cholmod_sparse form.
-	*
-	* Note that stype>0 and stype<0 are different for cholmod_sparse and
-	* cholmod_triplet.  The reason is simple.  You can permute a symmetric
-	* triplet matrix by simply replacing a row and column index with their
-	* new row and column indices, via an inverse permutation.  Suppose
-	* P = L->Perm is your permutation, and Pinv is an array of size n.
-	* Suppose a symmetric matrix A is represent by a triplet matrix T, with
-	* entries only in the upper triangular part.  Then the following code:
-	*
-	*	Ti = T->i ;
-	*	Tj = T->j ;
-	*	for (k = 0 ; k < n  ; k++) Pinv [P [k]] = k ;
-	*	for (k = 0 ; k < nz ; k++) Ti [k] = Pinv [Ti [k]] ;
-	*	for (k = 0 ; k < nz ; k++) Tj [k] = Pinv [Tj [k]] ;
-	*
-	* creates the triplet form of C=P*A*P'.  However, if T initially
-	* contains just the upper triangular entries (T->stype = 1), after
-	* permutation it has entries in both the upper and lower triangular
-	* parts.  These entries should be transposed when constructing the
-	* cholmod_sparse form of A, which is what cholmod_triplet_to_sparse
-	* does.  Thus:
-	*
-	*	C = cholmod_triplet_to_sparse (T, 0, &Common) ;
-	*
-	* will return the matrix C = P*A*P'.
-	*
-	* Since the triplet matrix T is so simple to generate, it's quite easy
-	* to remove entries that you do not want, prior to converting T to the
-	* cholmod_sparse form.  So if you include these entries in T, CHOLMOD
-	* assumes that there must be a reason (such as the one above).  Thus,
-	* no entry in a triplet matrix is ever ignored.
-	*/
+             *
+    * 0:  matrix is "unsymmetric": use both upper and lower triangular parts
+    *     (the matrix may actually be symmetric in pattern and value, but
+    *     both parts are explicitly stored and used).  May be square or
+    *     rectangular.
+    * >0: matrix is square and symmetric.  Entries in the lower triangular
+    *     part are transposed and added to the upper triangular part when
+    *     the matrix is converted to cholmod_sparse form.
+    * <0: matrix is square and symmetric.  Entries in the upper triangular
+    *     part are transposed and added to the lower triangular part when
+    *     the matrix is converted to cholmod_sparse form.
+    *
+    * Note that stype>0 and stype<0 are different for cholmod_sparse and
+    * cholmod_triplet.  The reason is simple.  You can permute a symmetric
+    * triplet matrix by simply replacing a row and column index with their
+    * new row and column indices, via an inverse permutation.  Suppose
+    * P = L->Perm is your permutation, and Pinv is an array of size n.
+    * Suppose a symmetric matrix A is represent by a triplet matrix T, with
+    * entries only in the upper triangular part.  Then the following code:
+    *
+    *	Ti = T->i ;
+    *	Tj = T->j ;
+    *	for (k = 0 ; k < n  ; k++) Pinv [P [k]] = k ;
+    *	for (k = 0 ; k < nz ; k++) Ti [k] = Pinv [Ti [k]] ;
+    *	for (k = 0 ; k < nz ; k++) Tj [k] = Pinv [Tj [k]] ;
+    *
+    * creates the triplet form of C=P*A*P'.  However, if T initially
+    * contains just the upper triangular entries (T->stype = 1), after
+    * permutation it has entries in both the upper and lower triangular
+    * parts.  These entries should be transposed when constructing the
+    * cholmod_sparse form of A, which is what cholmod_triplet_to_sparse
+    * does.  Thus:
+    *
+    *	C = cholmod_triplet_to_sparse (T, 0, &Common) ;
+    *
+    * will return the matrix C = P*A*P'.
+    *
+    * Since the triplet matrix T is so simple to generate, it's quite easy
+    * to remove entries that you do not want, prior to converting T to the
+    * cholmod_sparse form.  So if you include these entries in T, CHOLMOD
+    * assumes that there must be a reason (such as the one above).  Thus,
+    * no entry in a triplet matrix is ever ignored.
+    */
 
-    int itype ; /* CHOLMOD_LONG: i and j are SuiteSparse_long.  Otherwise int */
+    int itype ; /* CHOLMOD_LONG: i and j are SuiteSparse_long. Otherwise int */
     int xtype ; /* pattern, real, complex, or zomplex */
     int dtype ; /* x and z are double or float */
 
 } cholmod_triplet ;
 
 
-/* -------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------------- */
 /* cholmod_start:  first call to CHOLMOD */
-/* -------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------------- */
 int cholmod_l_start (cholmod_common *) ;
-/* -------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------------- */
 /* cholmod_finish:  last call to CHOLMOD */
-/* -------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------------- */
 int cholmod_l_finish (cholmod_common *) ;
 
-/* -------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------------- */
 /* cholmod_free_sparse:  free a sparse matrix */
-/* -------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------------- */
 int cholmod_l_free_sparse
 (
     /* ---- in/out --- */
@@ -123,9 +128,9 @@ int cholmod_l_free_sparse
  * appears more than once, its value is the sum of the entries with those row
  * and column indices.
  */
-/* -------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------------- */
 /* cholmod_allocate_triplet:  allocate a triplet matrix */
-/* -------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------------- */
 cholmod_triplet *cholmod_l_allocate_triplet
 (
     /* ---- input ---- */
@@ -142,9 +147,9 @@ cholmod_triplet *cholmod_l_allocate_triplet
 #define CHOLMOD_COMPLEX ...	/* a complex matrix (ANSI C99 compatible) */
 #define CHOLMOD_ZOMPLEX ...	/* a complex matrix (MATLAB compatible) */
 
-/* -------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------------- */
 /* cholmod_free_triplet:  free a triplet matrix */
-/* -------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------------- */
 int cholmod_l_free_triplet
 (
     /* ---- in/out --- */
@@ -153,9 +158,9 @@ int cholmod_l_free_triplet
     cholmod_common *Common
 ) ;
 
-/* -------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------------- */
 /* cholmod_check_triplet:  check a sparse matrix in triplet form */
-/* -------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------------- */
 // This one is from "cholmod_check.h".
 // Returns TRUE (1) if successful, or FALSE (0) otherwise.
 int cholmod_l_check_triplet
@@ -166,9 +171,9 @@ int cholmod_l_check_triplet
     cholmod_common *Common
 ) ;
 
-/* -------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------------- */
 /* cholmod_print_triplet:  print a triplet matrix */
-/* -------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------------- */
 int cholmod_l_print_triplet
 (
     /* ---- input ---- */
@@ -178,9 +183,9 @@ int cholmod_l_print_triplet
     cholmod_common *Common
 ) ;
 
-/* -------------------------------------------------------------------------- */
-/* cholmod_sparse_to_triplet:  create a triplet matrix copy of a sparse matrix*/
-/* -------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------------- */
+/* cholmod_sparse_to_triplet: create a triplet matrix copy of a sparse matrix*/
+/* ------------------------------------------------------------------------- */
 cholmod_triplet *cholmod_l_sparse_to_triplet
 (
     /* ---- input ---- */
@@ -189,9 +194,9 @@ cholmod_triplet *cholmod_l_sparse_to_triplet
     cholmod_common *Common
 ) ;
 
-/* -------------------------------------------------------------------------- */
-/* cholmod_triplet_to_sparse:  create a sparse matrix copy of a triplet matrix*/
-/* -------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------------- */
+/* cholmod_triplet_to_sparse: create a sparse matrix copy of a triplet matrix*/
+/* ------------------------------------------------------------------------- */
 cholmod_sparse *cholmod_l_triplet_to_sparse
 (
     /* ---- input ---- */
@@ -244,7 +249,9 @@ SuiteSparse_long SuiteSparseQR_C_QR /* returns rank(A) est., (-1) if failure */
 #define SPQR_NO_TOL ...            /* if -2 < tol < 0, then no tol is used */
 """)
 
+
 def main():
+
     ffibuilder.compile( verbose = True )
 
 if __name__ == "__main__":
