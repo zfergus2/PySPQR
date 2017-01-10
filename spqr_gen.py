@@ -13,9 +13,9 @@ ffibuilder = FFI()
 
 ffibuilder.set_source("_spqr",
     """#include <SuiteSparseQR_C.h>""",
-    library_dirs=["%s/SuiteSparse/lib/" % os.environ["HOME"]],
-    include_dirs=["%s/SuiteSparse/include/" % os.environ["HOME"]],
-    runtime_library_dirs=["%s/SuiteSparse/lib/" % os.environ["HOME"]],
+    library_dirs=["%(HOME)s/SuiteSparse/lib/" % os.environ],
+    include_dirs=["%(HOME)s/SuiteSparse/include/" % os.environ],
+    runtime_library_dirs=["%(HOME)s/SuiteSparse/lib/" % os.environ],
     libraries=["spqr"])
 
 ffibuilder.cdef("""
